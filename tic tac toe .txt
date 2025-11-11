@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe | SkillCraft Task 3</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #141e30, #243b55);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
+    }
+
+    h1 {
+      margin-bottom: 15px;
+      color: #00eaff;
+    }
+
+    .mode-select {
+      margin: 10px 0 20px;
+    }
+
+    .mode-select select {
+      padding: 8px 15px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: #00eaff;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 8px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+
+    .cell {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      font-size: 2.5rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .status {
+      font-size: 1.2rem;
+      margin: 10px 0;
+    }
+
+    .buttons button {
+      background: #00eaff;
+      color: #000;
+      border: none;
+      padding: 8px 18px;
+      margin: 5px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .buttons button:hover {
+      background: #0096c7;
+      color: #fff;
+    }
+
+    .scoreboard {
+      margin-top: 15px;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .highlight {
+      background: #00eaff !important;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Tic Tac Toe</h1>
+    <div class="mode-select">
+      <label>Mode: </label>
+      <select id="mode">
+        <option value="pvp">Player vs Player</option>
+        <option value="cpu">Player vs Computer</option>
+      </select>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="status" id="status">Turn: X</div>
+
+    <div class="buttons">
+      <button id="reset">Reset</button>
+      <button id="newMatch">New Match</button>
+    </div>
+
+    <div class="scoreboard" id="scoreboard">
+      X: <span id="scoreX">0</span> |
+      O: <span id="scoreO">0</span> |
+      Draws: <span id="scoreDraw">0</span>
+    </div>
+  </div>
+
+  <script>
+    const board = document.getElementById("board");
+    const statusText = document.getElementById("status");
+    const resetBtn = document.getElementById("reset");
+    const newMatchBtn = document.getElementById("newMatch");
+    const modeSelect = document.getElementById("mode");
+    const scoreX = document.getElementById("scoreX");
+    const scoreO = document.getElementById("scoreO");
+    const scoreDraw = document.getElementById("scoreDraw");
+
+    let cells = [];
+    let currentPlayer = "X";
+    let gameActive = true;
+    let gameMode = "pvp";
+
+    let scores = { X: 0, O: 0, Draw: 0 };
+
+    const winningPatterns = [
+      [0,1,2],
+      [3,4,5],
+      [6,7,8],
+      [0,3,6],
+      [1,4,7],
+      [2,5,8],
+      [0,4,8],
+      [2,4,6]
+    ];
+
+    function createBoard() {
+      board.innerHTML = "";
+      cells = [];
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.addEventListener("click", () => handleCellClick(i));
+        board.appendChild(cell);
+        cells.push(cell);
+      }
+      currentPlayer = "X";
+      statusText.textContent = "Turn: X";
+      gameActive = true;
+    }
+
+    function handleCellClick(i) {
+      if (!gameActive || cells[i].textContent !== "") return;
+      cells[i].textContent = currentPlayer;
+      checkWinner();
+
+      if (gameMode === "cpu" && gameActive && currentPlayer === "X") {
+        currentPlayer = "O";
+        statusText.textContent = "Computer's turn...";
+        setTimeout(cpuMove, 600);
+      } else if (gameActive) {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        statusText.textContent = "Turn: " + currentPlayer;
+      }
+    }
+
+    function cpuMove() {
+      let available = cells.map((c, i) => (c.textContent === "" ? i : null)).filter(i => i !== null);
+      if (available.length === 0) return;
+
+      // Simple AI: try to win, then block, else random
+      const move = findBestMove("O") || findBestMove("X") || available[Math.floor(Math.random() * available.length)];
+      cells[move].textContent = "O";
+      checkWinner();
+      if (gameActive) {
+        currentPlayer = "X";
+        statusText.textContent = "Turn: X";
+      }
+    }
+
+    function findBestMove(player) {
+      for (let pattern of winningPatterns) {
+        const [a,b,c] = pattern;
+        const values = [cells[a].textContent, cells[b].textContent, cells[c].textContent];
+        if (values.filter(v => v === player).length === 2 && values.includes("")) {
+          return pattern[values.indexOf("")];
+        }
+      }
+      return null;
+    }
+
+    function checkWinner() {
+      for (let pattern of winningPatterns) {
+        const [a,b,c] = pattern;
+        if (cells[a].textContent && cells[a].textContent === cells[b].textContent && cells[a].textContent === cells[c].textContent) {
+          cells[a].classList.add("highlight");
+          cells[b].classList.add("highlight");
+          cells[c].classList.add("highlight");
+          statusText.textContent = ${cells[a].textContent} Wins! 🎉;
+          scores[cells[a].textContent]++;
+          updateScores();
+          gameActive = false;
+          return;
+        }
+      }
+
+      if (cells.every(c => c.textContent !== "")) {
+        statusText.textContent = "It's a Draw!";
+        scores.Draw++;
+        updateScores();
+        gameActive = false;
+      }
+    }
+
+    function updateScores() {
+      scoreX.textContent = scores.X;
+      scoreO.textContent = scores.O;
+      scoreDraw.textContent = scores.Draw;
+    }
+
+    resetBtn.addEventListener("click", createBoard);
+    newMatchBtn.addEventListener("click", () => {
+      scores = { X: 0, O: 0, Draw: 0 };
+      updateScores();
+      createBoard();
+    });
+
+    modeSelect.addEventListener("change", () => {
+      gameMode = modeSelect.value;
+      createBoard();
+    });
+
+    createBoard();
+  </script>
+</body>
+</html>
